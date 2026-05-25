@@ -220,8 +220,27 @@ function handleFiles(files) {
     if (!file.type.startsWith('image/')) return;
     const reader = new FileReader();
     reader.onload = e => {
-      uploadedImages.push({ name: file.name, dataUrl: e.target.result, base64: e.target.result.split(',')[1], type: file.type });
-      renderPreviews();
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const max = 800;
+        let w = img.width, h = img.height;
+        if (w > max || h > max) {
+          if (w > h) { h = h * max / w; w = max; }
+          else { w = w * max / h; h = max; }
+        }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const compressed = canvas.toDataURL('image/jpeg', 0.7);
+        uploadedImages.push({
+          name: file.name,
+          dataUrl: compressed,
+          base64: compressed.split(',')[1],
+          type: 'image/jpeg'
+        });
+        renderPreviews();
+      };
+      img.src = e.target.result;
     };
     reader.readAsDataURL(file);
   });
