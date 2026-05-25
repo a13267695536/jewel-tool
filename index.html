@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>珠宝佩戴图 · 批量提示词生成器</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Noto+Sans+SC:wght@200;300;400&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --cream:#f7f2ea; --gold:#b8922a; --gold2:#d4a83a;
+  --dark:#1a1410; --dark2:#2a2118; --dark3:#332a1a;
+  --text:#3a2e1e; --muted:#8a7a62; --border:rgba(184,146,42,0.22);
+}
+body { background:var(--cream); color:var(--text); font-family:'Noto Sans SC',sans-serif; font-weight:300; min-height:100vh; }
+header { background:var(--dark); padding:20px 40px; display:flex; align-items:center; justify-content:space-between; }
+.logo { font-family:'Cormorant Garamond',serif; font-size:20px; color:var(--gold2); letter-spacing:3px; }
+.logo-sub { font-size:10px; color:#555; letter-spacing:4px; margin-top:2px; }
+.header-tag { font-size:10px; letter-spacing:2px; color:var(--gold); border:1px solid rgba(184,146,42,0.3); padding:5px 12px; }
+.wrap { max-width:860px; margin:0 auto; padding:40px 24px 80px; }
+h1 { font-family:'Cormorant Garamond',serif; font-size:34px; font-weight:300; color:var(--dark); margin-bottom:6px; line-height:1.3; }
+h1 em { font-style:italic; color:var(--gold); }
+.sub { font-size:12px; color:var(--muted); letter-spacing:1px; margin-bottom:32px; }
+.preset-banner { background:linear-gradient(135deg,var(--dark2),#3a2a10); border:1px solid var(--border); padding:14px 20px; margin-bottom:20px; display:flex; align-items:center; gap:14px; border-radius:4px; }
+.preset-icon { font-size:22px; }
+.preset-name { font-size:12px; color:var(--gold2); margin-bottom:3px; }
+.preset-desc { font-size:10px; color:var(--muted); }
+.preset-badge { font-size:9px; letter-spacing:2px; color:var(--gold); border:1px solid var(--border); padding:3px 8px; margin-left:auto; }
+.upload-zone { border:2px dashed rgba(184,146,42,0.35); background:rgba(255,252,245,0.5); padding:36px 20px; text-align:center; cursor:pointer; margin-bottom:16px; border-radius:4px; transition:all 0.2s; position:relative; }
+.upload-zone:hover { border-color:var(--gold); background:rgba(184,146,42,0.05); }
+.upload-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+.upload-icon { font-size:30px; color:var(--gold); margin-bottom:10px; }
+.upload-title { font-size:14px; color:var(--dark); margin-bottom:5px; }
+.upload-hint { font-size:11px; color:var(--muted); }
+.preview-grid { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
+.preview-item { position:relative; width:88px; height:88px; border:1px solid var(--border); border-radius:3px; overflow:hidden; }
+.preview-item img { width:100%; height:100%; object-fit:cover; }
+.preview-item .remove { position:absolute; top:3px; right:3px; width:18px; height:18px; background:rgba(0,0,0,0.65); color:#fff; border:none; border-radius:50%; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.preview-item .img-label { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.55); color:#fff; font-size:9px; padding:2px 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.options-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:22px; }
+.opt-section { background:rgba(255,252,245,0.6); border:1px solid var(--border); padding:16px 18px; border-radius:4px; }
+.opt-title { font-size:10px; letter-spacing:3px; color:var(--gold); text-transform:uppercase; margin-bottom:12px; }
+.chips { display:flex; flex-wrap:wrap; gap:6px; }
+.chip { background:transparent; border:1px solid rgba(184,146,42,0.25); color:var(--muted); font-family:'Noto Sans SC',sans-serif; font-size:11px; font-weight:300; padding:6px 12px; cursor:pointer; transition:all 0.18s; border-radius:2px; }
+.chip:hover { border-color:var(--gold); color:var(--gold); }
+.chip.active { background:var(--gold); border-color:var(--gold); color:#fff; }
+.error-box { background:rgba(180,60,40,0.1); border:1px solid rgba(180,60,40,0.25); padding:12px 18px; color:#c07060; font-size:12px; margin-bottom:16px; border-radius:4px; display:none; }
+.error-box.show { display:block; }
+.gen-wrap { text-align:center; margin:8px 0 36px; }
+.gen-btn { background:var(--dark3); color:var(--gold2); border:1px solid var(--gold); font-family:'Cormorant Garamond',serif; font-size:18px; font-weight:300; letter-spacing:4px; padding:16px 64px; cursor:pointer; transition:all 0.25s; border-radius:3px; }
+.gen-btn:hover { background:var(--dark2); }
+.gen-btn:disabled { opacity:0.5; cursor:not-allowed; }
+.loading { display:none; text-align:center; padding:32px 0; }
+.loading.show { display:block; }
+.spinner { width:32px; height:32px; border:2px solid rgba(184,146,42,0.2); border-top-color:var(--gold); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 14px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-text { font-size:12px; color:var(--muted); letter-spacing:2px; }
+.loading-step { font-size:11px; color:var(--gold); margin-top:6px; }
+.results { display:none; }
+.results.show { display:block; animation:fadeUp 0.4s ease; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+.product-analysis { background:rgba(255,252,245,0.7); border:1px solid var(--border); border-left:3px solid var(--gold); padding:16px 20px; margin-bottom:28px; display:flex; gap:16px; align-items:flex-start; border-radius:4px; }
+.analysis-img { width:72px; height:72px; object-fit:cover; border:1px solid var(--border); flex-shrink:0; border-radius:3px; }
+.analysis-title { font-size:10px; letter-spacing:3px; color:var(--gold); text-transform:uppercase; margin-bottom:8px; }
+.analysis-text { font-size:13px; color:var(--text); line-height:1.8; }
+.divider { display:flex; align-items:center; gap:16px; margin:0 0 28px; color:var(--muted); font-size:10px; letter-spacing:3px; text-transform:uppercase; }
+.divider::before,.divider::after { content:''; flex:1; height:1px; background:var(--border); }
+.type-section { margin-bottom:32px; }
+.type-header { display:flex; align-items:center; gap:12px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.type-icon { width:34px; height:34px; background:var(--dark); display:flex; align-items:center; justify-content:center; font-size:16px; border:1px solid var(--border); flex-shrink:0; }
+.type-name { font-size:14px; font-weight:400; color:var(--dark); }
+.type-desc { font-size:11px; color:var(--muted); margin-top:2px; }
+.type-count { margin-left:auto; font-size:10px; letter-spacing:2px; color:var(--gold); border:1px solid var(--border); padding:4px 10px; }
+.prompt-card { background:var(--dark); border:1px solid rgba(184,146,42,0.12); margin-bottom:10px; border-radius:4px; overflow:hidden; }
+.card-header { background:rgba(255,255,255,0.03); padding:10px 18px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(184,146,42,0.08); }
+.card-variant { font-size:10px; letter-spacing:3px; color:var(--gold); }
+.card-scene { font-size:11px; color:#888; }
+.card-body { padding:16px 18px; }
+.card-label { font-size:9px; letter-spacing:3px; color:#666; text-transform:uppercase; margin-bottom:5px; }
+.card-text { font-size:12px; color:#d0c4a8; line-height:1.85; margin-bottom:14px; word-break:break-all; }
+.card-neg-label { font-size:9px; letter-spacing:3px; color:#8a4a3a; text-transform:uppercase; margin-bottom:5px; }
+.card-neg { font-size:11px; color:#9a8070; line-height:1.75; word-break:break-all; }
+.card-actions { padding:10px 18px; border-top:1px solid rgba(184,146,42,0.07); display:flex; gap:8px; flex-wrap:wrap; }
+.copy-btn { background:transparent; border:1px solid var(--border); color:var(--gold); font-family:'Noto Sans SC',sans-serif; font-size:10px; letter-spacing:2px; padding:6px 14px; cursor:pointer; transition:all 0.2s; border-radius:2px; }
+.copy-btn:hover { background:var(--gold); color:var(--dark); }
+.copy-btn.copied { background:#2d5a27; border-color:#4a8a40; color:#9fd494; }
+.copy-all-wrap { text-align:center; margin-top:24px; padding-top:24px; border-top:1px solid var(--border); }
+.copy-all-btn { background:transparent; border:1px solid var(--gold); color:var(--gold); font-family:'Cormorant Garamond',serif; font-size:15px; letter-spacing:3px; padding:13px 40px; cursor:pointer; transition:all 0.2s; border-radius:3px; }
+.copy-all-btn:hover { background:var(--gold); color:var(--dark); }
+@media(max-width:600px){
+  header{padding:16px 20px;} .wrap{padding:28px 16px 60px;}
+  h1{font-size:26px;} .options-row{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">JEWEL STUDIO</div>
+    <div class="logo-sub">珠宝佩戴图批量提示词生成器</div>
+  </div>
+  <div class="header-tag">AI POWERED</div>
+</header>
+
+<div class="wrap">
+  <h1>上传产品图<br><em>批量生成</em>三类佩戴图</h1>
+  <p class="sub">上传白底图 / 实物图 → AI识别产品 → 静物图 · 棚拍图 · 真实拍摄 三套提示词</p>
+
+  <div class="preset-banner">
+    <div class="preset-icon">🎋</div>
+    <div>
+      <div class="preset-name">已匹配详情页风格：东方古典 · 温暖木质感</div>
+      <div class="preset-desc">金色做旧工艺 · 木盒书页场景 · 自然漫射光 · 东方面孔模特</div>
+    </div>
+    <div class="preset-badge">已锁定</div>
+  </div>
+
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept="image/*" multiple onchange="handleFiles(this.files)">
+    <div class="upload-icon">✦</div>
+    <div class="upload-title">点击或拖拽上传产品图片</div>
+    <div class="upload-hint">支持白底图、实物图、多图批量上传 · JPG / PNG</div>
+  </div>
+
+  <div class="preview-grid" id="previewGrid"></div>
+
+  <div class="options-row">
+    <div class="opt-section">
+      <div class="opt-title">模特偏好</div>
+      <div class="chips" id="modelOpt">
+        <div class="chip active" data-val="elegant Asian female model, porcelain fair skin, delicate refined East Asian features, natural minimal makeup">东方优雅</div>
+        <div class="chip" data-val="mixed-race female model, warm golden skin tone, high cheekbones, expressive eyes">混血感</div>
+        <div class="chip" data-val="mature elegant Chinese woman in her 30s, refined and poised, sophisticated look">成熟知性</div>
+        <div class="chip" data-val="anonymous model, no face shown, only hands neck and ears visible, focus purely on jewelry">无脸模特</div>
+      </div>
+    </div>
+    <div class="opt-section">
+      <div class="opt-title">出图数量（每类）</div>
+      <div class="chips" id="countOpt">
+        <div class="chip" data-val="1">1张</div>
+        <div class="chip active" data-val="2">2张</div>
+        <div class="chip" data-val="3">3张</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="gen-wrap">
+    <button class="gen-btn" id="genBtn" onclick="generate()">✦ 批量生成提示词 ✦</button>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text">AI 正在识别产品...</div>
+    <div class="loading-step" id="loadingStep">分析材质与工艺</div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="product-analysis" id="analysisBox">
+      <img id="analysisImg" src="" alt="" class="analysis-img">
+      <div>
+        <div class="analysis-title">✦ 产品识别结果</div>
+        <div class="analysis-text" id="analysisText"></div>
+      </div>
+    </div>
+    <div class="divider">三类佩戴图提示词</div>
+    <div class="type-section">
+      <div class="type-header">
+        <div class="type-icon">🪨</div>
+        <div><div class="type-name">静物佩戴图</div><div class="type-desc">产品陈列·东方道具·突出工艺细节·无模特</div></div>
+        <div class="type-count" id="staticCount">× 2</div>
+      </div>
+      <div id="staticCards"></div>
+    </div>
+    <div class="type-section">
+      <div class="type-header">
+        <div class="type-icon">📸</div>
+        <div><div class="type-name">首页高级棚拍佩戴图</div><div class="type-desc">模特佩戴·专业布光·高端大片感</div></div>
+        <div class="type-count" id="studioCount">× 2</div>
+      </div>
+      <div id="studioCards"></div>
+    </div>
+    <div class="type-section">
+      <div class="type-header">
+        <div class="type-icon">🌿</div>
+        <div><div class="type-name">真实拍摄佩戴图</div><div class="type-desc">生活场景·自然光·胶片温暖质感</div></div>
+        <div class="type-count" id="realCount">× 2</div>
+      </div>
+      <div id="realCards"></div>
+    </div>
+    <div class="copy-all-wrap">
+      <button class="copy-all-btn" onclick="copyAll()">✦ 一键复制全部提示词 ✦</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let uploadedImages = [];
+
+// 单选chips
+document.querySelectorAll('#modelOpt, #countOpt').forEach(group => {
+  group.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+    });
+  });
+});
+
+// 拖拽
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor = 'var(--gold)'; });
+zone.addEventListener('dragleave', () => { zone.style.borderColor = ''; });
+zone.addEventListener('drop', e => { e.preventDefault(); zone.style.borderColor = ''; handleFiles(e.dataTransfer.files); });
+
+function handleFiles(files) {
+  [...files].forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      uploadedImages.push({ name: file.name, dataUrl: e.target.result, base64: e.target.result.split(',')[1], type: file.type });
+      renderPreviews();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderPreviews() {
+  const grid = document.getElementById('previewGrid');
+  grid.innerHTML = '';
+  uploadedImages.forEach((img, i) => {
+    const div = document.createElement('div');
+    div.className = 'preview-item';
+    div.innerHTML = `<img src="${img.dataUrl}"><button class="remove" onclick="removeImg(${i})">×</button><div class="img-label">${img.name}</div>`;
+    grid.appendChild(div);
+  });
+}
+
+function removeImg(i) { uploadedImages.splice(i, 1); renderPreviews(); }
+
+function getChipVal(id) {
+  const el = document.querySelector(`#${id} .chip.active`);
+  return el ? el.dataset.val : '';
+}
+
+function showError(msg) {
+  const box = document.getElementById('errorBox');
+  box.textContent = msg; box.classList.add('show');
+  setTimeout(() => box.classList.remove('show'), 6000);
+}
+
+async function generate() {
+  if (uploadedImages.length === 0) { showError('请先上传至少一张产品图片'); return; }
+
+  const btn = document.getElementById('genBtn');
+  btn.disabled = true;
+  document.getElementById('loading').classList.add('show');
+  document.getElementById('results').classList.remove('show');
+
+  const steps = ['分析材质与工艺...','识别产品类型...','生成静物佩戴提示词...','生成棚拍提示词...','生成真实拍摄提示词...'];
+  let si = 0;
+  const stepEl = document.getElementById('loadingStep');
+  const timer = setInterval(() => { si = (si+1)%steps.length; stepEl.textContent = steps[si]; }, 1400);
+
+  const img = uploadedImages[0];
+  const count = parseInt(getChipVal('countOpt')) || 2;
+  const modelPref = getChipVal('modelOpt');
+
+  const systemPrompt = `你是专业珠宝AI生图提示词专家，精通Lovart平台。用户上传珠宝产品图，你需要：
+1. 精确识别产品（类型/材质/工艺/色彩/造型特征）
+2. 基于详情页风格（东方古典·温暖木质感·金色做旧工艺），生成三类佩戴图英文提示词
+
+严格按以下JSON输出，不含任何其他文字或markdown符号：
+{
+  "analysis": "产品识别（中文2-3句）",
+  "static": [{"variant":"场景名(中文)","prompt":"英文正向提示词","negative":"英文负面提示词"}],
+  "studio": [{"variant":"场景名(中文)","prompt":"英文正向提示词","negative":"英文负面提示词"}],
+  "real": [{"variant":"场景名(中文)","prompt":"英文正向提示词","negative":"英文负面提示词"}]
+}
+
+规则：
+- 防变形关键词必须出现：exact product proportions, no distortion, accurate jewelry shape, product integrity preserved
+- 静物图：无模特，东方木质/书页/丝绸/铜镜道具
+- 棚拍图：模特(${modelPref})佩戴，专业三点布光，Vogue大片感
+- 真实拍摄：模特(${modelPref})佩戴，自然窗光，生活化，胶片温暖质感
+- 每个prompt加：warm golden tones, Chinese antique aesthetic, organic wood textures, aged patina, handcrafted artisan feel
+- 每类生成${count}个不同场景`;
+
+  try {
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'Qwen/Qwen2.5-VL-72B-Instruct',
+        max_tokens: 4000,
+        system: systemPrompt,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: `data:${img.type};base64,${img.base64}` } },
+            { type: 'text', text: `分析这张珠宝产品图，生成${count}个变体的三类佩戴图提示词。只输出JSON。` }
+          ]
+        }]
+      })
+    });
+
+    clearInterval(timer);
+    if (!resp.ok) throw new Error(`请求失败 ${resp.status}`);
+
+    const data = await resp.json();
+    const raw = (data.choices?.[0]?.message?.content || data.content?.map(c=>c.text||'').join('') || '');
+    const clean = raw.replace(/```json|```/g,'').trim();
+
+    let parsed;
+    try { parsed = JSON.parse(clean); }
+    catch {
+      const m = clean.match(/\{[\s\S]*\}/);
+      if (m) parsed = JSON.parse(m[0]);
+      else throw new Error('解析失败，请重试');
+    }
+
+    renderResults(parsed, img.dataUrl);
+
+  } catch(e) {
+    clearInterval(timer);
+    showError('生成失败：' + e.message + '。请检查网络后重试。');
+  }
+
+  document.getElementById('loading').classList.remove('show');
+  btn.disabled = false;
+}
+
+function renderResults(data, imgUrl) {
+  document.getElementById('analysisImg').src = imgUrl;
+  document.getElementById('analysisText').textContent = data.analysis || '';
+  document.getElementById('staticCount').textContent = `× ${(data.static||[]).length}`;
+  document.getElementById('studioCount').textContent = `× ${(data.studio||[]).length}`;
+  document.getElementById('realCount').textContent = `× ${(data.real||[]).length}`;
+  renderCards('staticCards', data.static||[]);
+  renderCards('studioCards', data.studio||[]);
+  renderCards('realCards', data.real||[]);
+  document.getElementById('results').classList.add('show');
+  document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function renderCards(containerId, items) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  items.forEach((item, i) => {
+    const pid = `p_${containerId}_${i}`, nid = `n_${containerId}_${i}`;
+    const div = document.createElement('div');
+    div.className = 'prompt-card';
+    div.innerHTML = `
+      <div class="card-header">
+        <span class="card-variant">变体 ${String(i+1).padStart(2,'0')}</span>
+        <span class="card-scene">${item.variant||''}</span>
+      </div>
+      <div class="card-body">
+        <div class="card-label">✦ Positive Prompt</div>
+        <div class="card-text" id="${pid}">${item.prompt}</div>
+        <div class="card-neg-label">✕ Negative Prompt</div>
+        <div class="card-neg" id="${nid}">${item.negative}</div>
+      </div>
+      <div class="card-actions">
+        <button class="copy-btn" onclick="copyId('${pid}',this)">复制提示词</button>
+        <button class="copy-btn" onclick="copyId('${nid}',this)">复制负面词</button>
+        <button class="copy-btn" onclick="copyBoth('${pid}','${nid}',this)">复制全部</button>
+      </div>`;
+    c.appendChild(div);
+  });
+}
+
+function copyId(id, btn) {
+  const text = document.getElementById(id)?.textContent;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ 已复制'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function copyBoth(pid, nid, btn) {
+  const p = document.getElementById(pid)?.textContent || '';
+  const n = document.getElementById(nid)?.textContent || '';
+  navigator.clipboard.writeText(`正向：${p}\n负面：${n}`).then(() => {
+    btn.textContent = '✓ 已复制'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '复制全部'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function copyAll() {
+  const cards = document.querySelectorAll('.prompt-card');
+  let all = '';
+  cards.forEach(card => {
+    const variant = card.querySelector('.card-scene')?.textContent || '';
+    const p = card.querySelector('.card-text')?.textContent || '';
+    const n = card.querySelector('.card-neg')?.textContent || '';
+    all += `=== ${variant} ===\n正向：${p}\n负面：${n}\n\n`;
+  });
+  navigator.clipboard.writeText(all).then(() => {
+    const btn = document.querySelector('.copy-all-btn');
+    btn.textContent = '✓ 已复制全部';
+    setTimeout(() => btn.textContent = '✦ 一键复制全部提示词 ✦', 2500);
+  });
+}
+</script>
+</body>
+</html>
