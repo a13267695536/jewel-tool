@@ -7,18 +7,23 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
+    const apiKey = process.env.API_KEY;
+    console.log('API_KEY exists:', !!apiKey, 'length:', apiKey ? apiKey.length : 0);
+    
     const response = await fetch('https://api.siliconflow.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + process.env.API_KEY
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify(req.body)
     });
 
     const data = await response.json();
+    console.log('Response status:', response.status);
     return res.status(response.status).json(data);
   } catch (error) {
+    console.error('Error:', error);
     return res.status(500).json({ error: error.message });
   }
 }
