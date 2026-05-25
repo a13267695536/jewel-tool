@@ -10,7 +10,7 @@ module.exports = async function handler(req, res) {
     const apiKey = process.env.API_KEY;
     console.log('API_KEY exists:', !!apiKey, 'length:', apiKey ? apiKey.length : 0);
     
-    const response = await fetch('https://api.siliconflow.com/v1/chat/completions', {
+    const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
